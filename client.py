@@ -7,21 +7,22 @@ from kblistener import KBHit
 
 clientSocketTCP = None
 stop_threads = False
+broadcastPort = 13117
 
 def UDPclient():
     '''
     purpose : create UDP socket for cient enabling broadcast mode
     :return: UDP socket
     '''
-
+    global broadcastPort
     # create UDP socket for server
-    clientSocket = socket(AF_INET, SOCK_DGRAM , IPPROTO_UDP)
+    clientSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
 
     # Enable broadcasting mode
     clientSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
     # Broadcast port = 13117
-    clientSocket.bind(("", 13117))
+    clientSocket.bind(("", broadcastPort))
     return clientSocket
 
 

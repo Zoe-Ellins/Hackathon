@@ -5,6 +5,7 @@ import threading
 import selectors
 import binascii
 from scapy.arch import get_if_addr
+import netifaces as ni
 
 under10sec = True
 clientSocketList = []
@@ -13,6 +14,8 @@ group2 = []
 counter_group1 = 0
 counter_group2 = 0
 counter = 0
+broadcastPort = 13117
+server_port = 2124
 
 
 
@@ -22,7 +25,16 @@ def UDPserver():
     :return: UDP socket
     '''
 
-    serverHost = get_if_addr('eth1')
+    try:
+        serverHost = ni.ifaddresses('eth1')[ni.AF_INET][0]['addr']
+    except:
+        try:
+            serverHost = ni.ifaddresses('eth2')[ni.AF_INET][0]['addr']
+        except:
+            try:
+                serverHost = ni.ifaddresses('wlp2s0')[ni.AF_INET][0]['addr']
+            except:
+                return
 
     # create UDP socket
     serverSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -39,9 +51,9 @@ def TCPserver():
     purpose : create TCP socket for server
     :return: TCP socket
     '''
-
+    global server_port
     serverHost = get_if_addr('eth1')
-    serverPort = 2124               # port number from work assignment
+    serverPort = server_port               # port number from work assignment
 
     # create TCP welcoming socket
     serverSocket = socket(AF_INET, SOCK_STREAM)
@@ -62,12 +74,13 @@ def sendBroadcastOverUDP(start, serverSocket):
     :return: None
     '''
     global under10sec
+    global broadcastPort
     time.clock()  # start counting 10 sec
     elapsed = 0
     while elapsed < 10:
         elapsed = time.time() - start
         msg = hex(0xfeedbeef02084c)  # 0xfeedbeef = magic cookie , 0x02 = offer msg , 0x084C = TCP server port (2124)
-        serverSocket.sendto(binascii.unhexlify(msg[2:]), ('', 13117))
+        serverSocket.sendto(binascii.unhexlify(msg[2:]), ('', broadcastPort))
         time.sleep(1)
 
     under10sec = False
