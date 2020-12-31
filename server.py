@@ -4,6 +4,7 @@ import time
 import threading
 import selectors
 import binascii
+from scapy.arch import get_if_addr
 
 under10sec = True
 clientSocketList = []
@@ -14,9 +15,14 @@ counter_group2 = 0
 counter = 0
 
 
+
 def UDPserver():
-    serverHost = '10.100.102.55'
-    serverPort = 5555
+    '''
+    purpose : create UDP socket for server enabling broadcast mode
+    :return: UDP socket
+    '''
+
+    serverHost = get_if_addr('eth1')
 
     # create UDP socket
     serverSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -29,8 +35,13 @@ def UDPserver():
 
 
 def TCPserver():
-    serverHost = '10.100.102.55'
-    serverPort = 5555
+    '''
+    purpose : create TCP socket for server
+    :return: TCP socket
+    '''
+
+    serverHost = get_if_addr('eth1')
+    serverPort = 2124               # port number from work assignment
 
     # create TCP welcoming socket
     serverSocket = socket(AF_INET, SOCK_STREAM)
@@ -44,19 +55,31 @@ def TCPserver():
 
 
 def sendBroadcastOverUDP(start, serverSocket):
+    '''
+    purpose : send broadcast packets containing offers to connect to the servers TCP socket
+    :param start: start time for 10 seconds countdown
+    :param serverSocket: servers UDP socket
+    :return: None
+    '''
     global under10sec
     time.clock()  # start counting 10 sec
     elapsed = 0
     while elapsed < 10:
         elapsed = time.time() - start
-        msg = hex(0xfeedbeef0215B3)  # 0xfeedbeef = magic cookie , 0x02 = offer msg , 0x007C = TCP server port (5555)
-        serverSocket.sendto(binascii.unhexlify(msg[2:]), ('10.100.102.255', 13117))
+        msg = hex(0xfeedbeef02084c)  # 0xfeedbeef = magic cookie , 0x02 = offer msg , 0x084C = TCP server port (2124)
+        serverSocket.sendto(binascii.unhexlify(msg[2:]), ('', 13117))
         time.sleep(1)
 
     under10sec = False
 
 
 def connectClient(selector, serverSocketTCP):
+    '''
+    purpose : connect a specific client to the server , register him to the selector and add him to group1 or group2
+    :param selector: servers socket selector
+    :param serverSocketTCP: servers TCP welcoming socket
+    :return: None
+    '''
     global group1
     global group2
     global clientSocketList
@@ -90,6 +113,12 @@ def connectClient(selector, serverSocketTCP):
 
 
 def game(conn, groupNumber):
+    '''
+    purpose : read clients buffer (get clients keyboard input for game)
+    :param conn: clients socket connection from selector
+    :param groupNumber: clients group number (1 or 2)
+    :return: None
+    '''
     global counter_group1
     global counter_group2
 
@@ -107,6 +136,11 @@ def game(conn, groupNumber):
 
 
 def sendStartGameMsg(conn):
+    '''
+    purpose : send client the message that the game begins including all clients who are participating the game
+    :param conn: the clients connection socket
+    :return: None
+    '''
     global group1
     global group2
 
@@ -133,6 +167,11 @@ def sendStartGameMsg(conn):
         return
 
 def displayWinner(conn):
+    '''
+    purpose : display the group who won the game
+    :param conn: client socket connection
+    :return: None
+    '''
     global counter_group2
     global counter_group1
     global group1
@@ -175,6 +214,7 @@ def displayWinner(conn):
         return
 
 def main():
+
     global group1
     global group2
     global counter_group1

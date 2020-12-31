@@ -9,6 +9,11 @@ clientSocketTCP = None
 stop_threads = False
 
 def UDPclient():
+    '''
+    purpose : create UDP socket for cient enabling broadcast mode
+    :return: UDP socket
+    '''
+
     # create UDP socket for server
     clientSocket = socket(AF_INET, SOCK_DGRAM , IPPROTO_UDP)
 
@@ -21,6 +26,10 @@ def UDPclient():
 
 
 def TCPclient():
+    '''
+    purpose : create TCP socket for client
+    :return: TCP client
+    '''
     print('Client started, listening for offer requests...')
     # create TCP socket for server, remote port 12000
     clientSocket = socket(AF_INET, SOCK_STREAM)
@@ -29,6 +38,12 @@ def TCPclient():
 
 
 def catchOffer(clientSocket):
+    '''
+    purpose : parsing packets received form the UDP socket - checking that they are really offer packets
+    :param clientSocket: client UDP socket waiting for broadcast packets
+    :return: server IP address and port for TCP connection
+    '''
+
     try:
         msg = 0
         serverAddress = 0
@@ -48,6 +63,10 @@ def catchOffer(clientSocket):
 
 
 def on_press ():
+    '''
+    purpose : clients press on keyboard
+    :return: char pressed on clients keyboard
+    '''
     kb=KBHit()
     global stop_threads
     while True:
