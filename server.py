@@ -15,25 +15,31 @@ counter = 0
 
 
 def UDPserver():
-    serverHost = '10.100.102.33'
+    serverHost = '10.100.102.55'
     serverPort = 5555
-    serverSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)  # create UDP socket
-    #serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # TODO -check if needed
+
+    # create UDP socket
+    serverSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+
     # Enable broadcasting mode
     serverSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
-    #serverSocket.bind((serverHost, 13117))
     print(f'Server started, listening on IP address {serverHost}')
     return serverSocket
 
 
 def TCPserver():
-    serverHost = '10.100.102.33'
+    serverHost = '10.100.102.55'
     serverPort = 5555
-    serverSocket = socket(AF_INET, SOCK_STREAM)  # create TCP welcoming socket
+
+    # create TCP welcoming socket
+    serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind((serverHost, serverPort))
-    serverSocket.listen(1)  # server begins listening for incoming TCP requests
+
+    # server begins listening for incoming TCP requests
+    serverSocket.listen(1)
     serverSocket.setblocking(True)
+
     return serverSocket
 
 
@@ -43,7 +49,6 @@ def sendBroadcastOverUDP(start, serverSocket):
     elapsed = 0
     while elapsed < 10:
         elapsed = time.time() - start
-        print('sending offers')  # TODO - remove
         msg = hex(0xfeedbeef0215B3)  # 0xfeedbeef = magic cookie , 0x02 = offer msg , 0x007C = TCP server port (5555)
         serverSocket.sendto(binascii.unhexlify(msg[2:]), ('10.100.102.255', 13117))
         time.sleep(1)
@@ -58,26 +63,22 @@ def connectClient(selector, serverSocketTCP):
     global counter
 
     serverSocketTCP.settimeout(10)
-    print('in while loop = connectAllClients')
-    connectionSocket, addr = serverSocketTCP.accept()  # server waits on accept() for incoming requests, new socket created on return
+
+    # server waits on accept() for incoming requests, new socket created on return
+    connectionSocket, addr = serverSocketTCP.accept()
     connectionSocket.setblocking(True)
 
-    print('after accept')#TODO - remove
 
-    # get client name
     try:
+        # get client name
         clientName = connectionSocket.recv(1024).decode('utf-8')  # read bytes from socket
-        print(clientName) #TODO - remove
-
         connectionSocket.setblocking(False)
 
         if counter % 2 == 0:
-            print(f'client {clientName} is added to group1')#TODO - remove
             group1.append(clientName)
             counter += 1
             selector.register(connectionSocket, selectors.EVENT_READ | selectors.EVENT_WRITE, data=1)
         else:
-            print(f'client {clientName} is added to group2')#TODO - remove
             group2.append(clientName)
             counter += 1
             selector.register(connectionSocket, selectors.EVENT_READ | selectors.EVENT_WRITE, data=2)
@@ -94,11 +95,9 @@ def game(conn, groupNumber):
 
     try:
         msg = conn.recv(1024)
-        print(f'group number = {groupNumber} , msg is = {msg}')
         if groupNumber == 1:
             counter_group1 += 1
         if groupNumber == 2:
-            print(f'group2counter = {counter_group2}')
             counter_group2 += 1
 
 
@@ -108,7 +107,6 @@ def game(conn, groupNumber):
 
 
 def sendStartGameMsg(conn):
-    print('in function --- sendStartGameMsg')#TODO-remove
     global group1
     global group2
 
@@ -170,7 +168,7 @@ def displayWinner(conn):
               f'==\n' \
               f'{group2Name}'
 
-    print(msg)  # TODO - do we need to print in the servers side and send the msg to all clients ?
+    print(msg)
     try:
         conn.send(msg.encode('utf-8'))
     except Exception as e:
@@ -192,12 +190,16 @@ def main():
     sel.register(serverSocketTCP, selectors.EVENT_READ, data=None)
 
     while 1:
-        # Send offers by broadcast and register all clients to selector
+
         start = time.time()
+
+        # create thread for UDP
         thread = threading.Thread(target=sendBroadcastOverUDP, args=(start, serverSocketUDP),
-                                  daemon=True)  # create thread for UDP
+                                  daemon=True)
+        # Send offers
         thread.start()
 
+        # Register all clients to selector
         while under10sec:
             events = sel.select(timeout=10)
             for key, mask in events:

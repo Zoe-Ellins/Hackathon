@@ -9,21 +9,22 @@ clientSocketTCP = None
 stop_threads = False
 
 def UDPclient():
-    clientSocket = socket(AF_INET, SOCK_DGRAM , IPPROTO_UDP) # create UDP socket for server
-
-    # clientSocket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+    # create UDP socket for server
+    clientSocket = socket(AF_INET, SOCK_DGRAM , IPPROTO_UDP)
 
     # Enable broadcasting mode
     clientSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
+    # Broadcast port = 13117
     clientSocket.bind(("", 13117))
     return clientSocket
 
 
 def TCPclient():
-    print ('Client started, listening for offer requests...')
-    clientSocket = socket(AF_INET, SOCK_STREAM) # create TCP socket for server, remote port 12000
-    clientSocket.setblocking(True) #TODO - do we need to change it to false later?
+    print('Client started, listening for offer requests...')
+    # create TCP socket for server, remote port 12000
+    clientSocket = socket(AF_INET, SOCK_STREAM)
+    clientSocket.setblocking(True)
     return clientSocket
 
 
@@ -31,9 +32,11 @@ def catchOffer(clientSocket):
     try:
         msg = 0
         serverAddress = 0
-        print('looking for offers') #TODO - remove
-        msg, serverAddress = clientSocket.recvfrom(1024)  # read reply characters from socket into string
 
+        # read reply characters from socket into string
+        msg, serverAddress = clientSocket.recvfrom(1024)
+
+        # msg[:4] = Magic Cookie (4 bytes)     msg[4] = Message type (1 byte)    msg[5:7] = Server port (2 bytes)
         if msg[:4] == bytes([0xfe, 0xed, 0xbe, 0xef]) and msg[4] == 0x02:
             port = struct.unpack('>H', msg[5:7])[0]
             return serverAddress[0], int(port)
@@ -49,9 +52,11 @@ def on_press ():
     global stop_threads
     while True:
         if kb.kbhit():
+            #client input
             key = kb.getch()
             print(key)
             try:
+                #send client input to server
                 clientSocketTCP.send(str(key).encode('utf-8'))
             except Exception as e:
                 break
@@ -60,6 +65,7 @@ def on_press ():
 
 def stop_thread():
     global stop_threads
+    #stop thread that reads the clients inputs
     stop_threads = True
 
 
@@ -67,36 +73,36 @@ def main():
     global clientSocketTCP
     global stop_threads
 
-    clientSocketUDP = UDPclient() #TODO - do we need to rellocate this socket to the while?
-
     while True:
+        clientSocketUDP = UDPclient()
         clientSocketTCP = TCPclient()
         # Catch offer
         while(True):
             serverTCPport = 0
             serverTCPip = 0
+
+            #catch offers from broadcasts msg
             serverTCPip , serverTCPport = catchOffer(clientSocketUDP)
+
             if(serverTCPport is not 0):
-                print (f'Received offer from {serverTCPip} attempting to connect...')  #TODO - check why i keep receiving offers even though the server is closed ?
+                print (f'Received offer from {serverTCPip} attempting to connect...')
                 try:
-                    print(f'trying to connect to server with ip {serverTCPip} and port number {serverTCPport} ')
+                    #trying to connect to TCP server cought from the offer
                     clientSocketTCP.connect((serverTCPip, serverTCPport))
-                    print('after trying to connect to server')
                     break
+
                 except Exception as e:
-                    print(e)
                     continue
-        print('trying to send the client name') #TODO - remove
+
         # Send server the client name
         try:
-            clientSocketTCP.send(b'zoe\n')
-            print('after sending the client name')  # TODO - remove
+            clientSocketTCP.send(b'Shmar&Zoe\n')
 
             # get the start game msg from server
             startMsg = clientSocketTCP.recv(1024)
             print(startMsg.decode('utf-8'))
 
-            # Collect events until released
+            # listen to clients keyboard until game ends
             listener = threading.Thread(target=on_press, daemon=True)
             listener.start()
             Timer(10, stop_thread).start()
@@ -108,10 +114,12 @@ def main():
             print(endMsg.decode('utf-8'))
 
             clientSocketTCP.close()
+            clientSocketUDP.close()
             print('Server disconnected, listening for offer requests...')
 
         except Exception as e:
             clientSocketTCP.close()
+            clientSocketUDP.close()
             print('Server disconnected, listening for offer requests...')
             continue
 
